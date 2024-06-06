@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Drag and Drop</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background-color: #ffffff;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .table {
+            display: grid;
+            grid-template-columns: repeat(4, 64px);
+            grid-gap: 10px;
+            margin-bottom: 20px;
+        }
+        .cell {
+            width: 64px;
+            height: 64px;
+            border: 1px solid #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f0f0f0;
+        }
+        .cell img {
+            width: 64px;
+            height: 64px;
+            cursor: pointer;
+        }
+        .submit-button {
+            margin: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .result {
+            margin-top: 20px;
+            width: 100px;
+            height: 50px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 18px;
+            color: #ffffff;
+        }
+        .label {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="label">Fruits</div>
+        <div class="table" id="fruitsTable"></div>
+        <div class="label">Vegetables</div>
+        <div class="table" id="vegetablesTable"></div>
+        <div class="label">Source</div>
+        <div class="table" id="sourceTable"></div>
+        <button class="submit-button" onclick="submitGroups()">Submit</button>
+        <div class="result" id="result"></div>
+    </div>
+
+    <script>
+        const jsonData = [
+            {"group": "fruits", "text": "apple", "image_path": "images/apple.png"},
+            {"group": "vegetables", "text": "broccoli", "image_path": "images/broccoli.png"},
+            {"group": "vegetables", "text": "cabbage", "image_path": "images/cabbage.png"},
+            {"group": "fruits", "text": "bananas", "image_path": "images/bananas.png"},
+            {"group": "vegetables", "text": "carrot", "image_path": "images/carrot.png"},
+            {"group": "vegetables", "text": "eggplant", "image_path": "images/eggplant.png"},
+            {"group": "fruits", "text": "grapes", "image_path": "images/grapes.png"},
+            {"group": "fruits", "text": "pineapple", "image_path": "images/pineapple.png"}
+        ];
+
+        const fruitsTable = document.getElementById('fruitsTable');
+        const vegetablesTable = document.getElementById('vegetablesTable');
+        const sourceTable = document.getElementById('sourceTable');
+        const resultDiv = document.getElementById('result');
+
+        jsonData.forEach(item => {
+            const img = document.createElement('img');
+            img.src = item.image_path;
+            img.draggable = true;
+            img.dataset.group = item.group;
+            img.dataset.text = item.text;
+            img.ondragstart = drag;
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.id = `source-${item.text}`;
+            cell.appendChild(img);
+            sourceTable.appendChild(cell);
+        });
+
+        for (let i = 0; i < 4; i++) {
+            const fruitsCell = document.createElement('div');
+            fruitsCell.className = 'cell';
+            fruitsCell.ondragover = allowDrop;
+            fruitsCell.ondrop = drop;
+            fruitsCell.ondblclick = moveToSource;
+            fruitsCell.id = `fruits-${i}`;
+            fruitsTable.appendChild(fruitsCell);
+
+            const vegetablesCell = document.createElement('div');
+            vegetablesCell.className = 'cell';
+            vegetablesCell.ondragover = allowDrop;
+            vegetablesCell.ondrop = drop;
+            vegetablesCell.ondblclick = moveToSource;
+            vegetablesCell.id = `vegetables-${i}`;
+            vegetablesTable.appendChild(vegetablesCell);
+        }
+
+        function allowDrop(event) {
+            event.preventDefault();
+        }
+
+        function drag(event) {
+            event.dataTransfer.setData('text', event.target.src);
+            event.dataTransfer.setData('group', event.target.dataset.group);
+            event.dataTransfer.setData('textId', event.target.dataset.text);
+            event.dataTransfer.setData('sourceId', event.target.parentNode.id);
+        }
+
+        function drop(event) {
+            event.preventDefault();
+            const src = event.dataTransfer.getData('text');
+            const group = event.dataTransfer.getData('group');
+            const textId = event.dataTransfer.getData('textId');
+            const sourceId = event.dataTransfer.getData('sourceId');
+            const img = document.createElement('img');
+            img.src = src;
+            img.draggable = true;
+            img.dataset.group = group;
+            img.dataset.text = textId;
+            img.ondragstart = drag;
+
+            if (event.target.className === 'cell' && !event.target.hasChildNodes()) {
+                const previousParent = document.getElementById(sourceId);
+                previousParent.innerHTML = '';
+
+                event.target.appendChild(img);
+            } else if (event.target.className === 'cell' && event.target.hasChildNodes()) {
+                const existingImg = event.target.childNodes[0];
+                const existingTextId = existingImg.dataset.text;
+                const existingParent = document.getElementById(`source-${existingTextId}`);
+                existingParent.appendChild(existingImg);
+
+                event.target.innerHTML = '';
+                event.target.appendChild(img);
+            }
+        }
+
+        function moveToSource(event) {
+            const cell = event.currentTarget; // Use currentTarget instead of target
+            if (cell.className === 'cell' && cell.hasChildNodes()) {
+                const img = cell.childNodes[0];
+                const textId = img.dataset.text;
+                const sourceCell = document.getElementById(`source-${textId}`);
+                sourceCell.appendChild(img);
+                cell.innerHTML = '';
+            }
+        }
+
+        function submitGroups() {
+            let correct = true;
+
+            Array.from(fruitsTable.children).forEach(cell => {
+                if (cell.hasChildNodes()) {
+                    const item = cell.childNodes[0];
+                    if (item.dataset.group !== 'fruits') {
+                        correct = false;
+                    }
+                }
+            });
+
+            Array.from(vegetablesTable.children).forEach(cell => {
+                if (cell.hasChildNodes()) {
+                    const item = cell.childNodes[0];
+                    if (item.dataset.group !== 'vegetables') {
+                        correct = false;
+                    }
+                }
+            });
+
+            resultDiv.style.backgroundColor = correct ? '#00ff00' : '#ff0000';
+            resultDiv.innerText = correct ? 'Correct' : 'Incorrect';
+        }
+    </script>
+</body>
+</html>
